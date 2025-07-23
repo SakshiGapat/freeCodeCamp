@@ -1,74 +1,94 @@
 const Joi = require('joi');
 
-const blockSchema = Joi.object({}).keys({
-  desc: Joi.array().min(1),
-  challenges: Joi.object({}).keys({
+// Common definitions
+const helpCategories = [
+  'JavaScript',
+  'HTML-CSS',
+  'Python',
+  'Backend Development',
+  'C-Sharp',
+  'English',
+  'Odin',
+  'Euler',
+  'Rosetta'
+];
+
+const blockLayouts = [
+  'challenge-list',
+  'challenge-grid',
+  'dialogue-grid',
+  'link',
+  'project-list',
+  'legacy-challenge-list',
+  'legacy-link',
+  'legacy-challenge-grid'
+];
+
+const blockTypes = [
+  'lecture',
+  'workshop',
+  'lab',
+  'review',
+  'quiz',
+  'exam'
+];
+
+const challengeOrderSchema = Joi.object({
+  id: Joi.string().required().messages({
+    'string.base': '"id" should be a type of string',
+    'any.required': '"id" is required in challengeOrder'
+  }),
+  title: Joi.string().required().messages({
+    'string.base': '"title" should be a type of string',
+    'any.required': '"title" is required in challengeOrder'
+  })
+});
+
+const blockSchema = Joi.object({
+  desc: Joi.array().min(1).required().messages({
+    'array.base': '"desc" should be an array',
+    'array.min': '"desc" must contain at least one item',
+    'any.required': '"desc" is required'
+  }),
+  challenges: Joi.object({
     name: Joi.string().required(),
     isUpcomingChange: Joi.bool().required(),
     usesMultifileEditor: Joi.bool().optional(),
     hasEditableBoundaries: Joi.bool().optional(),
     dashedName: Joi.string().required(),
-    helpCategory: Joi.valid(
-      'JavaScript',
-      'HTML-CSS',
-      'Python',
-      'Backend Development',
-      'C-Sharp',
-      'English',
-      'Odin',
-      'Euler',
-      'Rosetta'
-    ).required(),
+    helpCategory: Joi.string().valid(...helpCategories).required(),
     order: Joi.number().when('superBlock', {
       is: 'full-stack-developer',
       then: Joi.forbidden(),
       otherwise: Joi.required()
     }),
     template: Joi.string().allow(''),
-    required: Joi.array(),
+    required: Joi.array().items(Joi.string()).optional(),
     superBlock: Joi.string().required(),
-    blockLayout: Joi.valid(
-      'challenge-list',
-      'challenge-grid',
-      'dialogue-grid',
-      'link',
-      'project-list',
-      'legacy-challenge-list',
-      'legacy-link',
-      'legacy-challenge-grid'
-    ).required(),
-    blockType: Joi.valid(
-      'lecture',
-      'workshop',
-      'lab',
-      'review',
-      'quiz',
-      'exam'
-    ).when('superBlock', {
+    blockLayout: Joi.string().valid(...blockLayouts).required(),
+    blockType: Joi.string().valid(...blockTypes).when('superBlock', {
       is: 'full-stack-developer',
       then: Joi.required(),
       otherwise: Joi.optional()
     }),
-    challengeOrder: Joi.array().items(
-      Joi.object({}).keys({
-        id: Joi.string(),
-        title: Joi.string()
-      })
-    ),
-    disableLoopProtectTests: Joi.boolean(),
-    disableLoopProtectPreview: Joi.boolean(),
-    superOrder: Joi.number()
-  })
+    challengeOrder: Joi.array().items(challengeOrderSchema),
+    disableLoopProtectTests: Joi.bool(),
+    disableLoopProtectPreview: Joi.bool(),
+    superOrder: Joi.number().optional()
+  }).required()
 });
 
-const subSchema = Joi.object({}).keys({
-  intro: Joi.array(),
-  blocks: Joi.object({}).pattern(Joi.string(), Joi.object().concat(blockSchema))
+const subSchema = Joi.object({
+  intro: Joi.array().items(Joi.string()).optional(),
+  blocks: Joi.object().pattern(
+    Joi.string(),
+    blockSchema
+  )
 });
 
-const schema = Joi.object({}).pattern(
+const schema = Joi.object().pattern(
   Joi.string(),
-  Joi.object().concat(subSchema)
+  subSchema
 );
 
 const availableSuperBlocksSchema = Joi.object({
@@ -82,7 +102,7 @@ const availableSuperBlocksSchema = Joi.object({
 });
 
 exports.superblockSchemaValidator = () => superblock =>
-  schema.validate(superblock);
+  schema.validate(superblock, { abortEarly: false });
 
 exports.availableSuperBlocksValidator = () => data =>
-  availableSuperBlocksSchema.validate(data);
+  availableSuperBlocksSchema.validate(data, { abortEarly: false });
